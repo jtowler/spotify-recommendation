@@ -1,3 +1,4 @@
 pandas
 spotipy
 pylint
+python3-discogs-client
