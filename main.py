@@ -13,6 +13,22 @@ from spotipy.oauth2 import SpotifyOAuth
 import pandas as pd
 
 
+def strip_brackets(string: str) -> str:
+    """
+    Remove text after first set of brackets.
+
+    :param string: String to strip brackets from
+    :return: string with brackets removed
+    """
+
+    puncs = [':', '(']
+    punc_indices = [string.index(punc) for punc in puncs if punc in string]
+    if len(punc_indices) > 0:
+        index = min(punc_indices)
+        string = string[:index]
+    return string
+
+
 def album_playlist_df(client: Spotify, playlist_id: str) -> pd.DataFrame:
     """
     Retrieve a DataFrame containg the albums from a given playlist id.
@@ -42,13 +58,21 @@ def get_discogs_df(client: Discogs, spotify_df: pd.DataFrame) -> pd.DataFrame:
     """
 
     def get_discogs_info(title: str, artist: str) -> List[str]:
+        print(title, artist)
         release = client.search(artist=artist, type='release', release_title=title)[0]
-        return [release.labels[0].name, release.genres[0], release.styles[0]]
+        main_rel = release.master.main_release
+        return [main_rel.labels[0].name,
+                main_rel.genres[0],
+                main_rel.styles[0],
+                main_rel.year,
+                main_rel.country]
 
-    discogs_df = pd.DataFrame(columns=['Album', 'Artist', "Label", "Genre", "Style"])
+    discogs_df = pd.DataFrame(
+        columns=['Album', 'Artist', "Label", "Genre", "Style", "Year", "Country"]
+    )
     for _, row in spotify_df.iterrows():
         album, artist = row['Album'], row['Artist']
-        extra_data = get_discogs_info(album.split()[0], artist)
+        extra_data = get_discogs_info(strip_brackets(album), artist)
         discogs_df.loc[len(discogs_df)] = [album, artist] + extra_data
     return spotify_df.merge(discogs_df, on=['Album', 'Artist'], how='left')
 
