@@ -5,13 +5,25 @@ jtowler 02/02/2022
 """
 import os
 import sys
-from typing import List
 import time
 
 from discogs_client.client import Client as Discogs
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
 import pandas as pd
+
+
+def get_most_common_data(discogs_df: pd.DataFrame) -> dict:
+    """
+    Get the most commonly occurring combinations of parameters in the data.
+
+    :param discogs_df: DataFrame containing the discogs data of releases.
+    :return: dict containing the most common parameters
+    """
+    mode_data = discogs_df.drop(
+        columns=["album", "artist", "num_for_sale", "lowest_price"]
+    ).mode()
+    return mode_data.iloc[0].to_dict()
 
 
 def strip_brackets(string: str) -> str:
@@ -22,7 +34,7 @@ def strip_brackets(string: str) -> str:
     :return: string with brackets removed
     """
 
-    puncs = [':', '(']
+    puncs = [':', '(', '*']
     punc_indices = [string.index(punc) for punc in puncs if punc in string]
     if len(punc_indices) > 0:
         index = min(punc_indices)
@@ -58,28 +70,33 @@ def get_discogs_df(client: Discogs, spotify_df: pd.DataFrame) -> pd.DataFrame:
     :return: DataFrame containing augmented playlist album data
     """
 
-    def get_discogs_info(title: str, artist: str) -> List[str]:
-        release = client.search(artist=artist, type='release', release_title=title)[0]
+    def get_discogs_info(title: str, artist: str) -> pd.DataFrame:
+        album = strip_brackets(title)
+        release = client.search(artist=artist, type='release', release_title=album)[0]
         main_rel = release.master.main_release
         market_stats = main_rel.marketplace_stats
-        return [main_rel.labels[0].name,
-                main_rel.genres[0],
-                main_rel.styles[0],
-                main_rel.year,
-                main_rel.country,
-                market_stats.number_for_sale,
-                market_stats.lowest_price]
 
-    discogs_df = pd.DataFrame(
-        columns=['Album', 'Artist', "Label", "Genre", "Style", "Year", "Country",
-                 "Number for Sale", "Lowest Price"]
-    )
+        data = {
+            'album': title,
+            'artist': artist,
+            "label": main_rel.labels[0].name,
+            "genre": main_rel.genres[0],
+            "style": main_rel.styles[0],
+            "year": int(main_rel.year),
+            "country": main_rel.country,
+            "num_for_sale": market_stats.num_for_sale,
+            "lowest_price": market_stats.lowest_price.value
+        }
+
+        return pd.DataFrame(data, index=[0])
+
+    dfs = []
     for _, row in spotify_df.iterrows():
         album, artist = row['Album'], row['Artist']
         time.sleep(3)
-        extra_data = get_discogs_info(strip_brackets(album), artist)
-        discogs_df.loc[len(discogs_df)] = [album, artist] + extra_data
-    return spotify_df.merge(discogs_df, on=['Album', 'Artist'], how='left')
+        release_df = get_discogs_info(album, artist)
+        dfs.append(release_df)
+    return pd.concat(dfs, ignore_index=True)
 
 
 if __name__ == "__main__":
@@ -100,4 +117,6 @@ if __name__ == "__main__":
 
     playlist_data = album_playlist_df(sp, pl_id)
     discogs_data = get_discogs_df(discogs_client, playlist_data.head())
-    print(discogs_data.head())
+    most_common = get_most_common_data(discogs_data)
+
+    print(most_common)
