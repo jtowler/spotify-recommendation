@@ -7,6 +7,7 @@ import os
 import sys
 import time
 
+from discogs_client import Release
 from discogs_client.client import Client as Discogs
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
@@ -26,18 +27,21 @@ def get_most_common_data(discogs_df: pd.DataFrame) -> dict:
     return mode_data.iloc[0].to_dict()
 
 
-def search_releases(client: Discogs, **kwargs) -> pd.DataFrame:
+def release_to_dataframe(release: Release) -> pd.DataFrame:
     """
-    Search the discogs release API with given parameters
+    Convert a discogs release to a DataFrame
 
-    :param client: Discogs client
-    :param kwargs: parameters to pass to the discogs API
+    :param release: Discogs release
 
-    :return: DataFrame of the first search result from the discogs API
+    :return: release data as a DataFrame
     """
-    release = client.search(type='release', **kwargs)[0]
     main_rel = release.master.main_release
     market_stats = main_rel.marketplace_stats
+    num_for_sale = market_stats.num_for_sale
+    if num_for_sale == 0:
+        lowest_price = None
+    else:
+        lowest_price = market_stats.lowest_price.value
 
     data = {
         'release_title': main_rel.title,
@@ -47,11 +51,35 @@ def search_releases(client: Discogs, **kwargs) -> pd.DataFrame:
         "style": main_rel.styles[0],
         "year": int(main_rel.year),
         "country": main_rel.country,
-        "num_for_sale": market_stats.num_for_sale,
-        "lowest_price": market_stats.lowest_price.value
+        "num_for_sale": num_for_sale,
+        "lowest_price": lowest_price
     }
 
     return pd.DataFrame(data, index=[0])
+
+
+def get_most_common_releases(client: Discogs,
+                             playlist_df: pd.DataFrame,
+                             limit: int = 5) -> pd.DataFrame:
+    """
+    Get the top results using the most common attributes in the given playlist
+
+    :param client: Discogs client
+    :param playlist_df: DataFrame of albums to recommend from
+    :param limit: number of releases to return
+    :return: DataFrame with the recommended releases
+    """
+    discogs_data = get_discogs_df(discogs_client, playlist_df.head())
+    most_common = get_most_common_data(discogs_data)
+
+    releases = client.search(type='release', **most_common)
+    if releases.count < limit:
+        limit = releases.count
+
+    dfs = []
+    for i in range(limit):
+        dfs.append(release_to_dataframe(releases[i]))
+    return pd.concat(dfs, ignore_index=True)
 
 
 def strip_brackets(string: str) -> str:
@@ -100,7 +128,8 @@ def get_discogs_df(client: Discogs, spotify_df: pd.DataFrame) -> pd.DataFrame:
 
     def get_discogs_info(**kwargs) -> pd.DataFrame:
         kwargs['release_title'] = strip_brackets(kwargs['release_title'])
-        return search_releases(client, **kwargs)
+        release = client.search(type='release', **kwargs)[0]
+        return release_to_dataframe(release)
 
     dfs = []
     for _, row in spotify_df.iterrows():
@@ -128,8 +157,6 @@ if __name__ == "__main__":
     discogs_client = Discogs('spotify-recommendations/0.1', user_token=os.environ['DISCOGS_TOKEN'])
 
     playlist_data = album_playlist_df(sp, pl_id)
-    discogs_data = get_discogs_df(discogs_client, playlist_data.head())
-    most_common = get_most_common_data(discogs_data)
-    r = search_releases(discogs_client, **most_common)
+    most_common_df = get_most_common_releases(discogs_client, playlist_data)
 
-    print(r)
+    print(most_common_df)
