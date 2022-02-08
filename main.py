@@ -12,6 +12,22 @@ from discogs_client.client import Client as Discogs
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
 import pandas as pd
+from thefuzz.fuzz import partial_ratio
+
+
+def get_playlist_id(client: Spotify, search: str) -> str:
+    """
+    Get the Spotify playlist ID from a search term.
+
+    :param client: Spotify client
+    :param search: search term to identify playlist with
+    :return: ID of selected playlist
+    """
+    response = client.current_user_playlists()
+    playlist_dict = {i['name']: i['id'] for i in response['items']}
+    scores = {i: partial_ratio(search, i) for i in playlist_dict.keys()}
+    max_key = max(scores, key=scores.get)
+    return playlist_dict[max_key]
 
 
 def get_most_common_data(discogs_df: pd.DataFrame) -> dict:
@@ -98,15 +114,15 @@ def strip_brackets(string: str) -> str:
     return string
 
 
-def album_playlist_df(client: Spotify, playlist_id: str) -> pd.DataFrame:
+def album_playlist_df(client: Spotify, pl_id: str) -> pd.DataFrame:
     """
     Retrieve a DataFrame containg the albums from a given playlist id.
 
     :param client: Spotify client
-    :param playlist_id: id of playlist to retrieve
+    :param pl_id: id of playlist to retrieve
     :return: DataFrame containing albums in playlist
     """
-    response = client.playlist_items(playlist_id)
+    response = client.playlist_items(pl_id)
     data = pd.DataFrame(columns=['Album', 'Artist', 'Album Type'])
     for row in response['items']:
         track = row['track']
@@ -146,7 +162,7 @@ if __name__ == "__main__":
         print("Need playlist argument")
         sys.exit(0)
     else:
-        PLAYLIST_ID = args[1]
+        PLAYLIST_NAME = args[1]
 
     if len(args) > 2:
         NUM_ALBUMS = int(args[2])
@@ -161,7 +177,8 @@ if __name__ == "__main__":
 
     discogs_client = Discogs('spotify-recommendations/0.1', user_token=os.environ['DISCOGS_TOKEN'])
 
-    playlist_data = album_playlist_df(sp, PLAYLIST_ID)
+    playlist_id = get_playlist_id(sp, PLAYLIST_NAME)
+    playlist_data = album_playlist_df(sp, playlist_id)
     most_common_df = get_most_common_releases(discogs_client, playlist_data, limit=NUM_ALBUMS)
 
     print(most_common_df)
