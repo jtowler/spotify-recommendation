@@ -7,7 +7,7 @@ import os
 import sys
 import time
 
-from discogs_client import Release
+from discogs_client import Master
 from discogs_client.client import Client as Discogs
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
@@ -27,15 +27,15 @@ def get_most_common_data(discogs_df: pd.DataFrame) -> dict:
     return mode_data.iloc[0].to_dict()
 
 
-def release_to_dataframe(release: Release) -> pd.DataFrame:
+def release_to_dataframe(release: Master) -> pd.DataFrame:
     """
     Convert a discogs release to a DataFrame
 
-    :param release: Discogs release
+    :param release: Discogs master release
 
     :return: release data as a DataFrame
     """
-    main_rel = release.master.main_release
+    main_rel = release.main_release
     market_stats = main_rel.marketplace_stats
     num_for_sale = market_stats.num_for_sale
     if num_for_sale == 0:
@@ -72,7 +72,7 @@ def get_most_common_releases(client: Discogs,
     discogs_data = get_discogs_df(discogs_client, playlist_df.head())
     most_common = get_most_common_data(discogs_data)
 
-    releases = client.search(type='release', **most_common)
+    releases = client.search(type='master', format='album', **most_common)
     if releases.count < limit:
         limit = releases.count
 
@@ -128,7 +128,7 @@ def get_discogs_df(client: Discogs, spotify_df: pd.DataFrame) -> pd.DataFrame:
 
     def get_discogs_info(**kwargs) -> pd.DataFrame:
         kwargs['release_title'] = strip_brackets(kwargs['release_title'])
-        release = client.search(type='release', **kwargs)[0]
+        release = client.search(type='master', format='album', **kwargs)[0]
         return release_to_dataframe(release)
 
     dfs = []
@@ -146,7 +146,12 @@ if __name__ == "__main__":
         print("Need playlist argument")
         sys.exit(0)
     else:
-        pl_id = args[1]
+        PLAYLIST_ID = args[1]
+
+    if len(args) > 2:
+        NUM_ALBUMS = int(args[2])
+    else:
+        NUM_ALBUMS = 5
 
     sp_oauth = SpotifyOAuth(scope='playlist-modify-private playlist-modify-public')
 
@@ -156,7 +161,7 @@ if __name__ == "__main__":
 
     discogs_client = Discogs('spotify-recommendations/0.1', user_token=os.environ['DISCOGS_TOKEN'])
 
-    playlist_data = album_playlist_df(sp, pl_id)
-    most_common_df = get_most_common_releases(discogs_client, playlist_data)
+    playlist_data = album_playlist_df(sp, PLAYLIST_ID)
+    most_common_df = get_most_common_releases(discogs_client, playlist_data, limit=NUM_ALBUMS)
 
     print(most_common_df)
