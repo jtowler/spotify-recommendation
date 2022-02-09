@@ -89,12 +89,19 @@ def get_most_common_releases(client: Discogs,
     most_common = get_most_common_data(discogs_data)
 
     releases = client.search(type='master', format='album', **most_common)
-    if releases.count < limit:
-        limit = releases.count
+    num_releases = releases.count
 
     dfs = []
-    for i in range(limit):
-        dfs.append(release_to_dataframe(releases[i]))
+    index = 0
+
+    while len(dfs) < limit and index < num_releases:
+        release_df = release_to_dataframe(releases[index])
+        overlap = len(playlist_df[(playlist_df['Artist'].isin(release_df['artist'])) &
+                                  (playlist_df['Album'].isin(release_df['release_title']))])
+
+        if overlap == 0:
+            dfs.append(release_df)
+        index += 1
     return pd.concat(dfs, ignore_index=True)
 
 
