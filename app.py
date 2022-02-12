@@ -3,21 +3,28 @@ Album recommendation Flask app.
 
 jtowler 11/02/2022
 """
-from flask import Flask
+from flask import Flask, session
+from flask_session import Session
 
 from clients.discogs import DiscogsClient
 from clients.spotify import SpotifyClient
 
 app = Flask(__name__)
 
+SESSION_TYPE = 'filesystem'
+app.config.from_object(__name__)
+Session(app)
+
 
 @app.route("/")
 def index() -> str:
     """
-    Landing page.
+    Landing page + set API clients.
 
     :return: welcome message string
     """
+    session['spotify_client'] = SpotifyClient()
+    session['discogs_client'] = DiscogsClient()
     return "Welcome to the album recommender."
 
 
@@ -33,12 +40,9 @@ def recommend_albums(playlist: str, limit='5') -> str:
     """
     limit = int(limit)
 
-    spotify_client = SpotifyClient()
-    discogs_client = DiscogsClient()
-
-    playlist_id = spotify_client.get_playlist_id(playlist)
-    playlist_data = spotify_client.album_playlist_df(playlist_id)
-    most_common_df = discogs_client.get_most_common_releases(playlist_data, limit=limit)
+    playlist_id = session['spotify_client'].get_playlist_id(playlist)
+    playlist_data = session['spotify_client'].album_playlist_df(playlist_id)
+    most_common_df = session['discogs_client'].get_most_common_releases(playlist_data, limit=limit)
     return most_common_df.to_html()
 
 
