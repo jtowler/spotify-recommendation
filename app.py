@@ -21,7 +21,7 @@ def index():
     """
     Landing page + set API clients.
 
-    :return: welcome message string
+    :return: page populated with dropdown of Spotify playlists
     """
     print(request.method)
     if request.method == 'POST':
@@ -33,7 +33,7 @@ def index():
     session['discogs_client'] = DiscogsClient()
     playlists = session['spotify_client'].get_playlists()
     playlist_names = playlists.keys()
-    return render_template('test.html', playlist_names=playlist_names)
+    return render_template('index.html', playlist_names=playlist_names)
 
 
 @app.route('/recommend/<playlist>')
@@ -44,14 +44,14 @@ def recommend_albums(playlist: str, limit='5') -> str:
 
     :param playlist: playlist search term
     :param limit: number of albums to recommend
-    :return: templates table of recommended albums
+    :return: Page with recommended albums
     """
     limit = int(limit)
 
     playlist_id = session['spotify_client'].get_playlist_id(playlist)
     playlist_data = session['spotify_client'].album_playlist_df(playlist_id)
     most_common = session['discogs_client'].get_most_common_releases(playlist_data, limit=limit)
-    return most_common.to_html()
+    return render_template('recommend.html', df=most_common)
 
 
 if __name__ == "__main__":
