@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dropdown</title>
+</head>
+<body>
+<form method="POST" action="/">
+    <select name="playlist_name">
+        {% for name in playlist_names %}
+        <option value="{{name}}">{{name}}</option>
+        "
+        {% endfor %}
+    </select>
+    <input type="submit" name="action1"/>
+</form>
+</body>
+</html>

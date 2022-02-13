@@ -3,7 +3,7 @@ Album recommendation Flask app.
 
 jtowler 11/02/2022
 """
-from flask import Flask, session
+from flask import Flask, session, render_template, request, redirect, url_for
 from flask_session import Session
 
 from clients.discogs import DiscogsClient
@@ -16,34 +16,42 @@ app.config.from_object(__name__)
 Session(app)
 
 
-@app.route("/")
-def index() -> str:
+@app.route("/", methods=['GET', 'POST'])
+def index():
     """
     Landing page + set API clients.
 
     :return: welcome message string
     """
+    print(request.method)
+    if request.method == 'POST':
+        playlist = request.form.get('playlist_name')
+        playlists = session['spotify_client'].get_playlists()
+        playlist_id = playlists[playlist]
+        return redirect(url_for('recommend_albums', playlist=playlist_id))
     session['spotify_client'] = SpotifyClient()
     session['discogs_client'] = DiscogsClient()
-    return "Welcome to the album recommender."
+    playlists = session['spotify_client'].get_playlists()
+    playlist_names = playlists.keys()
+    return render_template('test.html', playlist_names=playlist_names)
 
 
-@app.route('/<playlist>')
-@app.route('/<playlist>/<limit>')
+@app.route('/recommend/<playlist>')
+@app.route('/recommend/<playlist>/<limit>')
 def recommend_albums(playlist: str, limit='5') -> str:
     """
     Recommend albums from a spotify playlist search term
 
     :param playlist: playlist search term
     :param limit: number of albums to recommend
-    :return: html table of recommended albums
+    :return: templates table of recommended albums
     """
     limit = int(limit)
 
     playlist_id = session['spotify_client'].get_playlist_id(playlist)
     playlist_data = session['spotify_client'].album_playlist_df(playlist_id)
-    most_common_df = session['discogs_client'].get_most_common_releases(playlist_data, limit=limit)
-    return most_common_df.to_html()
+    most_common = session['discogs_client'].get_most_common_releases(playlist_data, limit=limit)
+    return most_common.to_html()
 
 
 if __name__ == "__main__":
