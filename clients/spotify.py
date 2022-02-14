@@ -61,3 +61,21 @@ class SpotifyClient:
             album_type = track['album']['album_type']
             data.loc[len(data)] = [album, artists, album_type]
         return data.drop_duplicates()
+
+    def get_spotify_link(self, artist: str, album: str) -> str:
+        """
+        Search for link to the spotify album page
+
+        :param artist: artist to search for
+        :param album: album to search for
+        :return: Spotify link
+        """
+        query = f'artist:{artist} album:{album}'
+        response = self.client.search(q=query, type='album')
+        items = response['albums']['items']
+        if len(items) == 0:
+            return ''
+        for i in items:
+            if i['album_type'] == 'album':
+                return i['external_urls']['spotify']
+        return ''

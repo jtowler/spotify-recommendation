@@ -7,7 +7,7 @@
 <body>
 {% for key,value in df.iterrows() %}
 <h3>{{ value['release_title'] }} - {{ value['artist'] }}</h3>
-<img src='{{ value["image_url"] }}'>
+<a href='{{ value["spotify_link"] }}'><img src='{{ value["image_url"] }}'></a>
 {% endfor %}
 </body>
 </html>

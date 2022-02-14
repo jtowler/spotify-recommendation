@@ -50,7 +50,9 @@ def recommend_albums(playlist: str, limit='5') -> str:
 
     playlist_id = session['spotify_client'].get_playlist_id(playlist)
     playlist_data = session['spotify_client'].album_playlist_df(playlist_id)
-    most_common = session['discogs_client'].get_most_common_releases(playlist_data, limit=limit)
+    most_common = session['discogs_client'].get_most_common_releases(playlist_data,
+                                                                     session['spotify_client'],
+                                                                     limit=limit)
     return render_template('recommend.html', df=most_common)
 
 
