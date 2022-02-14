@@ -25,10 +25,11 @@ def index():
     """
     print(request.method)
     if request.method == 'POST':
+        limit = request.form.get('recommend_limit')
         playlist = request.form.get('playlist_name')
         playlists = session['spotify_client'].get_playlists()
         playlist_id = playlists[playlist]
-        return redirect(url_for('recommend_albums', playlist=playlist_id))
+        return redirect(url_for('recommend_albums', playlist=playlist_id, limit=limit))
     session['spotify_client'] = SpotifyClient()
     session['discogs_client'] = DiscogsClient()
     playlists = session['spotify_client'].get_playlists()
