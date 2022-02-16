@@ -1,9 +1,12 @@
 """
 Album recommendation Flask app.
 
-jtowler 11/02/2022
+jtowler 2022/02/11
 """
+import os
+
 from flask import Flask, session, render_template, request, redirect, url_for
+
 from flask_session import Session
 
 from clients.discogs import DiscogsClient
@@ -11,8 +14,16 @@ from clients.spotify import SpotifyClient
 
 app = Flask(__name__)
 
+if os.getenv('FLASK_ENV') == 'production':
+    app.config['ENV'] = 'production'
+    app.config['DEBUG'] = False
+    app.config['TESTING'] = False
+else:
+    app.config['ENV'] = 'development'
+    app.config['DEBUG'] = True
+    app.config['TESTING'] = True
+
 SESSION_TYPE = 'filesystem'
-app.config.from_object(__name__)
 Session(app)
 
 
