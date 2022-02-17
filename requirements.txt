@@ -4,3 +4,5 @@ pylint
 python3-discogs-client
 thefuzz[speedup]
 python-Levenshtein
+flask
+flask_session

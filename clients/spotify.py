@@ -1,7 +1,7 @@
 """
 Spotify Client
 
-jtowler 09/02/2022
+jtowler 2022/02/09
 """
 import pandas as pd
 from spotipy import SpotifyOAuth, Spotify
@@ -20,15 +20,27 @@ class SpotifyClient:
         token = sp_oauth.get_access_token(code)
         self.client = Spotify(auth=token['access_token'])
 
-    def get_playlist_id(self, search: str) -> str:
+    def get_playlists(self) -> dict:
+        """
+        Get the Spotify playlist ID from a search term.
+
+        :return: dictionary of playlist name: ID
+        """
+        response = self.client.current_user_playlists()
+        return {i['name']: i['id'] for i in response['items']}
+
+    def get_playlist_id(self, search: str, playlist: dict = None) -> str:
         """
         Get the Spotify playlist ID from a search term.
 
         :param search: search term to identify playlist with
+        :param playlist: playlist dictionary, if missing get from spotify client
         :return: ID of selected playlist
         """
-        response = self.client.current_user_playlists()
-        playlist_dict = {i['name']: i['id'] for i in response['items']}
+        if playlist is None:
+            playlist_dict = self.get_playlists()
+        else:
+            playlist_dict = playlist
         scores = {i: partial_ratio(search, i) for i in playlist_dict.keys()}
         max_key = max(scores, key=scores.get)
         return playlist_dict[max_key]
@@ -49,3 +61,21 @@ class SpotifyClient:
             album_type = track['album']['album_type']
             data.loc[len(data)] = [album, artists, album_type]
         return data.drop_duplicates()
+
+    def get_spotify_link(self, artist: str, album: str) -> str:
+        """
+        Search for link to the spotify album page
+
+        :param artist: artist to search for
+        :param album: album to search for
+        :return: Spotify link
+        """
+        query = f'artist:{artist} album:{album}'
+        response = self.client.search(q=query, type='album')
+        items = response['albums']['items']
+        if len(items) == 0:
+            return ''
+        for i in items:
+            if i['album_type'] == 'album':
+                return i['external_urls']['spotify']
+        return ''

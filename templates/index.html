@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Album Recommender</title>
+</head>
+<body>
+<form method="POST" action="/">
+    <select name="playlist_name">
+        {% for name in playlist_names %}
+        <option value="{{name}}">{{name}}</option>
+        "
+        {% endfor %}
+    </select>
+    <input type="number" name="recommend_limit" placeholder=5>
+    <input type="submit" name="submit_action"/>
+</form>
+</body>
+</html>

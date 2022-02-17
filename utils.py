@@ -1,7 +1,7 @@
 """
 Helper functions.
 
-jtowler 09/02/2022
+jtowler 2022/02/09
 """
 import pandas as pd
 from discogs_client import Master
@@ -31,7 +31,7 @@ def get_most_common_data(discogs_df: pd.DataFrame) -> dict:
     :return: dict containing the most common parameters
     """
     mode_data = discogs_df.drop(
-        columns=["release_title", "artist", "num_for_sale", "lowest_price"]
+        columns=["release_title", "artist", "num_for_sale", "lowest_price", "image_url"]
     ).mode()
     return mode_data.iloc[0].to_dict()
 
@@ -54,14 +54,15 @@ def release_to_dataframe(release: Master) -> pd.DataFrame:
 
     data = {
         'release_title': main_rel.title,
-        'artist': main_rel.artists[0].name,
+        'artist': strip_brackets(main_rel.artists[0].name),
         "label": main_rel.labels[0].name,
         "genre": main_rel.genres[0],
         "style": main_rel.styles[0],
         "year": int(main_rel.year),
         "country": main_rel.country,
         "num_for_sale": num_for_sale,
-        "lowest_price": lowest_price
+        "lowest_price": lowest_price,
+        "image_url": main_rel.thumb
     }
 
     return pd.DataFrame(data, index=[0])
